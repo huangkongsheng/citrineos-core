@@ -3,6 +3,9 @@
 // SPDX-License-Identifier: Apache-2.0
 import 'reflect-metadata';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { getMetadataArgsStorage } from 'routing-controllers';
+import type { Key } from 'path-to-regexp';
+import * as pathToRegexp from 'path-to-regexp';
 
 // Barrel first: the ModuleApi files resolve BaseController through src/index.js,
 // so the barrel must finish evaluating before the deep imports below run.
@@ -248,6 +251,29 @@ describe('SessionsModuleApi', () => {
     expect(log).toHaveBeenCalledWith('updateChargingPreferences', 'S-1', body);
     expect(log).toHaveBeenCalledTimes(2);
     expect(sessionsService.getSessions).not.toHaveBeenCalled();
+  });
+
+  it('registers the charging_preferences route so a real session id resolves to the handler', () => {
+    // routing-controllers joins the controller prefix and the action route and
+    // compiles the joined path with path-to-regexp, where "{name}" is an optional
+    // literal group rather than a parameter - so a "{sessionId}" route only ever
+    // matches the literal word "sessionId", every real session id 404s, and
+    // @Param('sessionId') stays undefined.
+    const storage = getMetadataArgsStorage();
+    const controller = storage.controllers.find((c) => c.target === SessionsModuleApi);
+    const action = storage.actions.find(
+      (a) => a.target === SessionsModuleApi && a.method === 'updateChargingPreferences',
+    );
+    expect(action).toBeDefined();
+
+    const keys: Key[] = [];
+    const matcher = pathToRegexp.pathToRegexp(`${controller?.route ?? ''}${action!.route}`, keys);
+    const match = matcher.exec('/2.2.1/sessions/abc-123/charging_preferences');
+    expect(match).not.toBeNull();
+
+    const sessionIdKey = keys.findIndex((key) => key.name === 'sessionId');
+    expect(sessionIdKey).toBeGreaterThanOrEqual(0);
+    expect(match![sessionIdKey + 1]).toBe('abc-123');
   });
 });
 

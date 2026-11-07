@@ -84,7 +84,9 @@ export class SessionsModuleApi extends BaseController implements ISessionsModule
     );
   }
 
-  @Put('/{sessionId}/charging_preferences')
+  // routing-controllers resolves ":name" segments with path-to-regexp; "{sessionId}"
+  // is an optional literal there, so only ":sessionId" matches a real session id
+  @Put('/:sessionId/charging_preferences')
   @AsOcpiFunctionalEndpoint()
   @ResponseSchema(ChargingPreferencesResponseSchema, ChargingPreferencesResponseSchemaName, {
     statusCode: HttpStatus.OK,
