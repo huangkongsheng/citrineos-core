@@ -551,8 +551,10 @@ export class TransactionEventRequestOcpp2Handler extends AbstractHandler {
       }
     }
 
-    // Store total cost in db
-    if (response.totalCost && transaction) {
+    // Store total cost in db. A finalized totalCost of 0 (e.g. the C20 cancelled-before-costs
+    // response above) is a real value the station was already told about, so store it too
+    // instead of leaving the row's stale or missing cost in place.
+    if (response.totalCost != null && transaction) {
       await this._transactionRepository.updateTransactionTotalCostById(
         tenantId,
         response.totalCost,

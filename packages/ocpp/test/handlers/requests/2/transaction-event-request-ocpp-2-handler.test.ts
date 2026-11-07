@@ -175,6 +175,23 @@ describe('TransactionEventRequestOcpp2Handler', () => {
       expect(response.totalCost).toBe(0);
     });
 
+    it('stores the finalized totalCost 0 on the transaction', async () => {
+      const { handler, transactionEventRepository } = makeHandler({
+        deviceModelVariables: { 'TariffCostCtrlr.Enabled.Tariff': [{ value: 'false' }] },
+      });
+
+      await handler.handle(makeMessage(anEndedTransactionEvent(), OCPPVersion.OCPP2_1));
+
+      // The response commits to 0 (C20.FR.03); leaving the row's totalCost at its
+      // stale/null value would make the stored record disagree with what the
+      // station was told.
+      expect(transactionEventRepository.updateTransactionTotalCostById).toHaveBeenCalledWith(
+        DEFAULT_TENANT_ID,
+        0,
+        1,
+      );
+    });
+
     it('leaves totalCost alone when the station calculates cost itself', async () => {
       const response = await handleWithTariffEnabled('true');
 
